@@ -77,5 +77,5 @@ print(len(clf.classes_))
 
 fig, axes = plt.subplots(nrows = 1,ncols = 1,figsize = (4,4), dpi=300)
 tree.plot_tree(clf,filled=True,rounded=True, ax=axes)
-plt.savefig('figures/decision-tree.png')
+plt.savefig('figures/decision_tree.png')
 
