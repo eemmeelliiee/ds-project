@@ -80,7 +80,7 @@ sns.heatmap(corr,#Use the flightscorrelation matrix
             cmap=sns.color_palette("coolwarm", as_cmap=True), #Color options
             vmin=-1.0, vmax=1.0, #Ensure the color range is set to the entire possible correlation range
             square=True, ax=ax1) #Set the form of the cells to squares
-ax1.set_title("Feature correlation")
+ax1.set_title("Correlation matrix")
 fig1.subplots_adjust(right=0.9) 
 fig1.savefig("figures/correlation-matrix.png", format='png', dpi=600)
 plt.show
