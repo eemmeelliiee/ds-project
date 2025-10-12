@@ -82,7 +82,7 @@ sns.heatmap(corr,#Use the flightscorrelation matrix
             square=True, ax=ax1) #Set the form of the cells to squares
 ax1.set_title("Correlation matrix")
 fig1.subplots_adjust(right=0.9) 
-fig1.savefig("figures/correlation-matrix.png", format='png', dpi=600)
+fig1.savefig("figures/correlation_matrix.png", format='png', dpi=600)
 plt.show
 
 # For lower dimensionality: Remove feature with highest correlation (Type Water Body_WATER TREATMENT PLANT (RAW WATER))
