@@ -32,14 +32,14 @@ print("All files found")
 # -------------------------------------------------------------------
 # Class order, labels, and color palette
 # -------------------------------------------------------------------
-class_order = [1, 2, 0]
-class_labels = {1: 'A', 2: 'C', 0: 'Other'}
+class_order = [2, 1, 0]
+class_labels = {2: 'A', 1: 'C', 0: 'Other'}
 x_tick_labels = [class_labels[i] for i in class_order]
 
 # Color-blind–friendly blue → light blue → red
 palette_custom = {
-    1: "#364B9A",  # Blue  → Class A (Good)
-    2: "#6EA6CD",  # Light Blue → Class C (Moderate)
+    2: "#364B9A",  # Blue  → Class A (Good)
+    1: "#6EA6CD",  # Light Blue → Class C (Moderate)
     0: "#DD3D2D"   # Red   → Class Other (Poor)
 }
 
@@ -111,7 +111,8 @@ df['water_body_type'] = df[body_cols].idxmax(axis=1).str.replace('Type Water Bod
 counts_bt = df.groupby(['water_body_type', 'water_quality']).size().unstack(fill_value=0)
 props_bt = counts_bt.div(counts_bt.sum(axis=1), axis=0).reindex(columns=class_order, fill_value=0)
 
-order_bt = props_bt.sort_values(by=1, ascending=False).index
+# Order water body types by total number of samples (descending)
+order_bt = counts_bt.sum(axis=1).sort_values(ascending=False).index
 n_per_bt = counts_bt.loc[order_bt].sum(axis=1)
 
 ax = props_bt.loc[order_bt].plot(
@@ -159,7 +160,8 @@ df['state'] = df[state_cols].idxmax(axis=1).str.replace('State Name_', '', regex
 counts_st = df.groupby(['state', 'water_quality']).size().unstack(fill_value=0)
 props_st = counts_st.div(counts_st.sum(axis=1), axis=0).reindex(columns=class_order, fill_value=0)
 
-order_st = props_st.sort_values(by=1, ascending=False).index
+# Order states by total number of samples (descending)
+order_st = counts_st.sum(axis=1).sort_values(ascending=False).index
 n_per_st = counts_st.loc[order_st].sum(axis=1)
 
 ax = props_st.loc[order_st].plot(
