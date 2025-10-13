@@ -12,7 +12,7 @@ from sklearn.metrics import precision_score
 from pathlib import Path
 from sklearn.metrics import accuracy_score, f1_score, recall_score, precision_score, classification_report
 
-def ModelAndEvaluateData():
+def ModelDataAndEvaluate():
 
     # Validate input file(s)
     def ReadPreviousData(location: str):
