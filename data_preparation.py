@@ -16,7 +16,7 @@ def PrepareData():
             data = pd.DataFrame()
             return data, False
 
-    df, df_exists = ReadPreviousData('data/Indian_water_data.csv')
+    df, df_exists = ReadPreviousData('data/original_dataset.csv')
 
     PreviousDataComplete = all([df_exists])
 

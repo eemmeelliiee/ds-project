@@ -1,10 +1,10 @@
 from data_preparation import PrepareData
-from data_modeling_and_model_evalutation import ModelAndEvaluateData
+from data_modeling_and_model_evalutation import ModelDataAndEvaluate
 from data_exploration import ExploreData 
 
 def main():
     PrepareData()
-    ModelAndEvaluateData()
+    ModelDataAndEvaluate()
     ExploreData()
 
 if __name__ == "__main__":
