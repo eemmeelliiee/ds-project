@@ -1,6 +1,6 @@
 # ds-project-2
 ## Instructions:
-Fork the repo. The dataset is included in folder ```data``` and thus does not need to be downloaded.
+Fork the repo. The original dataset is included in folder ```data``` and thus does not need to be downloaded.
 
 Running the main script calls the following methods:
 1. ```PrepareData()``` from ```data_preparation.py``` which cleans the original dataset and outputs ```cleaned_dataset.csv``` (which is used in the remaining modules).
