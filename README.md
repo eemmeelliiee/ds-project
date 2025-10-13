@@ -5,7 +5,7 @@ Fork the repo. The original dataset is included in folder ```data``` and thus do
 Running the main script calls the following methods:
 1. ```PrepareData()``` from ```data_preparation.py``` which cleans the original dataset and outputs ```cleaned_dataset.csv``` (which is used in the remaining modules).
 2. ```ModelDataAndEvaluate()``` from ```data_modeling–and–model_evaluation.py``` which models a decision tree and evaluates the resuls.
-3. ```ExploreData()``` from ```data_evaluation.py``` which saves 5 insightful visualizations to ```/figures``` folder.
+3. ```ExploreData()``` from ```data_evaluation.py``` which saves 5 insightful visualizations to ```/figures/data-exploration``` folder.
 
 <!--- 
 Download the dataset here:
