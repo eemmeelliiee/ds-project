@@ -56,7 +56,7 @@ def ExploreData():
     # -------------------------------------------------------------------
     # Figure 1 – Distribution by Class
     # -------------------------------------------------------------------
-    plt.figure(figsize=(15, 15))
+    plt.figure(figsize=(10, 10))
     counts = df['water_quality'].value_counts().reindex(class_order).reset_index()
     counts.columns = ['water_quality', 'count']
 
@@ -81,7 +81,7 @@ def ExploreData():
     # -------------------------------------------------------------------
     # Figure 2 – Max Temperature by Class
     # -------------------------------------------------------------------
-    plt.figure(figsize=(15, 15))
+    plt.figure(figsize=(10, 10))
     sns.boxplot(
         data=df,
         x='water_quality',
@@ -130,7 +130,7 @@ def ExploreData():
     # -------------------------------------------------------------------
     df['pH_range'] = df['pH - Max'] - df['pH - Min']
 
-    plt.figure(figsize=(15, 15))
+    plt.figure(figsize=(10, 10))
     sns.boxplot(
         data=df,
         x='water_quality',
