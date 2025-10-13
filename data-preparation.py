@@ -14,7 +14,7 @@ def ReadPreviousData(location: str):
     else:
         data = pd.DataFrame()
 
-df, df_exists = ReadPreviousData('data/Indian_water_data.csv')
+df, df_exists = ReadPreviousData('data/original_dataset.csv')
 
 PreviousDataComplete = all([df_exists])
 
@@ -87,4 +87,4 @@ plt.show
 
 # For lower dimensionality: Remove feature with highest correlation (Type Water Body_WATER TREATMENT PLANT (RAW WATER))
 df.drop(columns=['Type Water Body_WATER TREATMENT PLANT (RAW WATER)'], inplace=True)
-df.to_csv('data/water_quality_cols_complete_rows_rel_cols_all_num_less_corr.csv')
+df.to_csv('data/cleaned_dataset.csv')
