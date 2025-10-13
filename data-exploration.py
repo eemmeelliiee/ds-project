@@ -43,46 +43,33 @@ palette_custom = {
     0: "#DD3D2D"   # Red   → Class Other (Poor)
 }
 
-# small helper to annotate n above stacked bars
-def annotate_counts_above_bars(ax, n_series, y_offset=0.08, fmt="n={n}"):
-    """
-    Add n-labels clearly above stacked bars.
-    - y_offset: controls how far above 1.0 the labels appear (as a proportion)
-    - Expands ylim to keep labels inside the visible area
-    """
-    for i, (cat, n) in enumerate(n_series.items()):
-        ax.text(
-            i,
-            1 + y_offset,               # place well above top of bar
-            fmt.format(n=int(n)),
-            ha='center',
-            va='bottom',
-            fontsize=9
-        )
-    ax.set_ylim(0, 1 + y_offset + 0.1)  # adds generous headroom
+# -------------------------------------------------------------------
+# Helpers
+# -------------------------------------------------------------------
+def save_show(path):
+    plt.tight_layout()
+    plt.savefig(path, dpi=300)
+    plt.show()
+
+def annotate_counts(ax, counts, offset=0.08):
+    for i, n in enumerate(counts):
+        ax.text(i, 1 + offset, f"n={int(n)}", ha='center', va='bottom', fontsize=9)
+    ax.set_ylim(0, 1.1 + offset)
 
 # -------------------------------------------------------------------
-# Figure 1 – Distribution of Samples by Water Quality Class (Count)
+# Figure 1 – Distribution by Class
 # -------------------------------------------------------------------
 plt.figure(figsize=(6, 4))
+counts = df['water_quality'].value_counts().reindex(class_order).reset_index()
+counts.columns = ['water_quality', 'count']
 
-# Count samples per water quality class
-count_df = (
-    df['water_quality']
-    .value_counts()
-    .reindex(class_order)
-    .reset_index()
-)
-count_df.columns = ['water_quality', 'count']
-
-# Barplot of counts
 sns.barplot(
-    data=count_df,
+    data=counts,
     x='water_quality',
     y='count',
     hue='water_quality',
-    hue_order=class_order,
     order=class_order,
+    hue_order=class_order,
     palette=palette_custom,
     legend=False
 )
@@ -90,143 +77,100 @@ sns.barplot(
 plt.title('Distribution of Samples by Water Quality Class')
 plt.xlabel('Water Quality Class')
 plt.ylabel('Number of Samples')
-plt.xticks(ticks=range(len(class_order)), labels=x_tick_labels)
-plt.tight_layout()
-plt.savefig('figures/data-exploration/01_water_quality_distribution_count.png', dpi=300)
-plt.show()
+plt.xticks(range(len(class_order)), x_tick_labels)
+save_show('figures/data-exploration/01_water_quality_distribution_count.png')
+
 
 # -------------------------------------------------------------------
-# Figure 2 – Maximum Temperature by Water Quality
+# Figure 2 – Max Temperature by Class
 # -------------------------------------------------------------------
 plt.figure(figsize=(7, 5))
 sns.boxplot(
     data=df,
-    x='water_quality', y='Temperature (C) - Max',
+    x='water_quality',
+    y='Temperature (C) - Max',
+    order=class_order,
     hue='water_quality',
     hue_order=class_order,
-    order=class_order,
     palette=palette_custom,
     legend=False
 )
 plt.title('Temperature (°C) - Max by Water Quality Class')
 plt.xlabel('Water Quality Class')
 plt.ylabel('Temperature (°C) - Max')
-plt.xticks(ticks=range(len(class_order)), labels=x_tick_labels)
-plt.tight_layout()
-plt.savefig('figures/data-exploration/02_temp_max_vs_quality.png', dpi=300)
-plt.show()
+plt.xticks(range(len(class_order)), x_tick_labels)
+save_show('figures/data-exploration/02_temp_max_vs_quality.png')
+
 
 # -------------------------------------------------------------------
-# Figure 3 – Water Quality Distribution by Water Body Type (proportions)
-# Deterministic stacking: A (bottom) → C (middle) → Other (top)
+# Figure 3 – Proportion by Water Body Type
 # -------------------------------------------------------------------
-# Build readable 'water_body_type' from one-hot columns
-body_cols = [c for c in df.columns if c.startswith('Type Water Body_')]
+body_cols = [c for c in df if c.startswith('Type Water Body_')]
 df['water_body_type'] = df[body_cols].idxmax(axis=1).str.replace('Type Water Body_', '', regex=False)
 
-# counts & proportions per body type
 counts_bt = df.groupby(['water_body_type', 'water_quality']).size().unstack(fill_value=0)
-props_bt  = counts_bt.div(counts_bt.sum(axis=1), axis=0).fillna(0.0)
+props_bt = counts_bt.div(counts_bt.sum(axis=1), axis=0).reindex(columns=class_order, fill_value=0)
 
-# enforce deterministic class order and handle dtypes
-props_bt = props_bt.reindex(columns=class_order, fill_value=0.0)
-props_bt.columns = pd.CategoricalIndex(props_bt.columns, ordered=True, categories=class_order)
-props_bt = props_bt.sort_index(axis=1)
-
-# sort bars by share of Class A (optional for readability)
-order_bt = props_bt.sort_values(by=1, ascending=False).index if 1 in props_bt.columns else props_bt.index
-props_bt_sorted = props_bt.loc[order_bt]
+order_bt = props_bt.sort_values(by=1, ascending=False).index
 n_per_bt = counts_bt.loc[order_bt].sum(axis=1)
 
-ax = props_bt_sorted.plot(
-    kind='bar',
-    stacked=True,
-    figsize=(10, 6),
-    width=0.85,
-    edgecolor='white',
-    linewidth=0.5,
-    color=[palette_custom[c] for c in props_bt_sorted.columns]  # [1, 2, 0]
+ax = props_bt.loc[order_bt].plot(
+    kind='bar', stacked=True, figsize=(10, 6),
+    color=[palette_custom[c] for c in class_order], edgecolor='white', linewidth=0.5
 )
-
-plt.title('Proportion of Water Quality Classes by Water Body Type', fontsize=14)
-plt.xlabel('Water Body Type', fontsize=12)
-plt.ylabel('Proportion of Samples', fontsize=12)
+plt.title('Proportion of Water Quality Classes by Water Body Type')
+plt.xlabel('Water Body Type')
+plt.ylabel('Proportion of Samples')
 plt.xticks(rotation=45, ha='right')
-
-# annotate n above bars and add legend
-annotate_counts_above_bars(ax, n_per_bt, y_offset=0.02)
+annotate_counts(ax, n_per_bt)
 handles = [mpatches.Patch(color=palette_custom[c], label=class_labels[c]) for c in class_order]
 plt.legend(handles=handles, title='Water Quality', bbox_to_anchor=(1.05, 1), loc='upper left')
-
-plt.tight_layout()
-plt.savefig('figures/data-exploration/03_water_quality_vs_body_type.png', dpi=300)
-plt.show()
+save_show('figures/data-exploration/03_water_quality_vs_body_type.png')
 
 # -------------------------------------------------------------------
-# Figure 4 – pH Range by Water Quality
+# Figure 4 – pH Range by Class
 # -------------------------------------------------------------------
 df['pH_range'] = df['pH - Max'] - df['pH - Min']
 
 plt.figure(figsize=(7, 5))
 sns.boxplot(
     data=df,
-    x='water_quality', y='pH_range',
+    x='water_quality',
+    y='pH_range',
+    order=class_order,
     hue='water_quality',
     hue_order=class_order,
-    order=class_order,
     palette=palette_custom,
     legend=False
 )
 plt.title('pH Range (Max - Min) by Water Quality Class')
 plt.xlabel('Water Quality Class')
 plt.ylabel('pH Range (Max - Min)')
-plt.xticks(ticks=range(len(class_order)), labels=x_tick_labels)
-plt.tight_layout()
-plt.savefig('figures/data-exploration/04_ph_range_vs_quality.png', dpi=300)
-plt.show()
+plt.xticks(range(len(class_order)), x_tick_labels)
+save_show('figures/data-exploration/04_ph_range_vs_quality.png')
 
 
 # -------------------------------------------------------------------
-# Figure 5 – Proportion of Water Quality Levels Across States (proportions)
-# Deterministic stacking: A (bottom) → C (middle) → Other (top)
+# Figure 5 – Proportion by State
 # -------------------------------------------------------------------
-state_cols = [col for col in df.columns if col.startswith('State Name_')]
+state_cols = [c for c in df if c.startswith('State Name_')]
 df['state'] = df[state_cols].idxmax(axis=1).str.replace('State Name_', '', regex=False)
 
-# counts & proportions per state
 counts_st = df.groupby(['state', 'water_quality']).size().unstack(fill_value=0)
-props_st  = counts_st.div(counts_st.sum(axis=1), axis=0).fillna(0.0)
+props_st = counts_st.div(counts_st.sum(axis=1), axis=0).reindex(columns=class_order, fill_value=0)
 
-# enforce deterministic class order and handle dtypes
-props_st = props_st.reindex(columns=class_order, fill_value=0.0)
-props_st.columns = pd.CategoricalIndex(props_st.columns, ordered=True, categories=class_order)
-props_st = props_st.sort_index(axis=1)
-
-# sort states by share of Class A (optional for readability)
-order_st = props_st.sort_values(by=1, ascending=False).index if 1 in props_st.columns else props_st.index
-props_st_sorted = props_st.loc[order_st]
+order_st = props_st.sort_values(by=1, ascending=False).index
 n_per_st = counts_st.loc[order_st].sum(axis=1)
 
-ax = props_st_sorted.plot(
-    kind='bar',
-    stacked=True,
-    figsize=(12, 6),
-    width=0.85,
-    edgecolor='white',
-    linewidth=0.5,
-    color=[palette_custom[c] for c in props_st_sorted.columns]  # [1, 2, 0]
+ax = props_st.loc[order_st].plot(
+    kind='bar', stacked=True, figsize=(12, 6),
+    color=[palette_custom[c] for c in class_order], edgecolor='white', linewidth=0.5
 )
-
-plt.title('Proportion of Water Quality Levels Across Indian States', fontsize=14)
-plt.xlabel('State', fontsize=12)
-plt.ylabel('Proportion of Samples', fontsize=12)
+plt.title('Proportion of Water Quality Levels Across Indian States')
+plt.xlabel('State')
+plt.ylabel('Proportion of Samples')
 plt.xticks(rotation=45, ha='right')
-
-# annotate n above bars and add legend
-annotate_counts_above_bars(ax, n_per_st, y_offset=0.02)
+annotate_counts(ax, n_per_st)
 handles = [mpatches.Patch(color=palette_custom[c], label=class_labels[c]) for c in class_order]
 plt.legend(handles=handles, title='Water Quality', bbox_to_anchor=(1.05, 1), loc='upper left')
-
-plt.tight_layout()
-plt.savefig('figures/data-exploration/05_state_vs_quality_proportion.png', dpi=300)
-plt.show()
+save_show('figures/data-exploration/05_state_vs_quality_proportion.png')
