@@ -53,7 +53,7 @@ df.to_csv('data/water_quality_cols_complete_rows.csv')
 # Add water quality class column with values based on CPCB water quality qriteria
 class_a = ((df['pH - Min'] >= 6.5) & (df['pH - Max'] <= 8.5) & (df['Dissolved - Min'] >= 6) & (df['BOD (mg/L) - Max'] <= 2) & (df['Total Coliform (MPN/100ml) - Max'] <= 50))
 class_c = ((df['pH - Min'] >= 6) & (df['pH - Max'] <= 9) & (df['Dissolved - Min'] >= 4) & (df['BOD (mg/L) - Max'] <= 3) & (df['Total Coliform (MPN/100ml) - Max'] <= 5000))
-df['water_quality'] = np.select([class_a, class_c],[1, 2], default=0)  # 1 = 'Class A', 2 = 'Class C' 0 = 'Other')
+df['water_quality'] = np.select([class_a, class_c],[2, 1], default=0)  # 1 = 'Class A', 2 = 'Class C' 0 = 'Other')
 
 # Drop columns not used for predictive model use case
 irel_cols = 'Total Coliform (MPN/100ml) - Min,Total Coliform (MPN/100ml) - Max,BOD (mg/L) - Min,BOD (mg/L) - Max,Dissolved - Max' 
