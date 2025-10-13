@@ -1,8 +1,8 @@
 # ds-project-2
 ## Instructions:
-Clone the repo. The dataset is included in folder ```data``` and thus does not need to be downloaded.
+Fork the repo. The dataset is included in folder ```data``` and thus does not need to be downloaded.
 
-The main script runs the following methods:
+Running the main script calls the following methods:
 1. ```PrepareData()``` from ```data_preparation.py``` which cleans the original dataset and outputs ```cleaned_dataset.csv``` (which is used in the remaining modules).
 2. ```ModelDataAndEvaluate()``` from ```data_modeling–and–model_evaluation.py``` which models a decision tree and evaluates the resuls.
 3. ```ExploreData()``` from ```data_evaluation.py``` which saves 5 insightful visualizations to ```/figures``` folder.
