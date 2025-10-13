@@ -11,7 +11,6 @@ from pathlib import Path
 import sys
 import matplotlib.patches as mpatches
 
-
 def ExploreData():
 
     # -------------------------------------------------------------------
@@ -26,7 +25,7 @@ def ExploreData():
             data = pd.DataFrame()
             return data, False
 
-    df, df_exists = ReadPreviousData('data/water_quality_cols_complete_rows_rel_cols_all_num_less_corr.csv')
+    df, df_exists = ReadPreviousData('data/cleaned_dataset.csv')
 
     if not df_exists:
         sys.exit("ERROR: Not all required data found.")
@@ -49,11 +48,6 @@ def ExploreData():
     # -------------------------------------------------------------------
     # Helpers
     # -------------------------------------------------------------------
-    def save_show(path):
-        plt.tight_layout()
-        plt.savefig(path, dpi=300)
-        plt.show()
-
     def annotate_counts(ax, counts, offset=0.08):
         for i, n in enumerate(counts):
             ax.text(i, 1 + offset, f"n={int(n)}", ha='center', va='bottom', fontsize=9)
@@ -62,7 +56,7 @@ def ExploreData():
     # -------------------------------------------------------------------
     # Figure 1 – Distribution by Class
     # -------------------------------------------------------------------
-    plt.figure(figsize=(6, 4))
+    plt.figure(figsize=(15, 15))
     counts = df['water_quality'].value_counts().reindex(class_order).reset_index()
     counts.columns = ['water_quality', 'count']
 
@@ -81,13 +75,13 @@ def ExploreData():
     plt.xlabel('Water Quality Class')
     plt.ylabel('Number of Samples')
     plt.xticks(range(len(class_order)), x_tick_labels)
-    save_show('figures/data-exploration/01_water_quality_distribution_count.png')
+    plt.savefig('figures/data-exploration/01_water_quality_distribution_count.png', dpi=300)
 
 
     # -------------------------------------------------------------------
     # Figure 2 – Max Temperature by Class
     # -------------------------------------------------------------------
-    plt.figure(figsize=(7, 5))
+    plt.figure(figsize=(15, 15))
     sns.boxplot(
         data=df,
         x='water_quality',
@@ -102,7 +96,7 @@ def ExploreData():
     plt.xlabel('Water Quality Class')
     plt.ylabel('Temperature (°C) - Max')
     plt.xticks(range(len(class_order)), x_tick_labels)
-    save_show('figures/data-exploration/02_temp_max_vs_quality.png')
+    plt.savefig('figures/data-exploration/02_temp_max_vs_quality.png')
 
 
     # -------------------------------------------------------------------
@@ -119,7 +113,7 @@ def ExploreData():
     n_per_bt = counts_bt.loc[order_bt].sum(axis=1)
 
     ax = props_bt.loc[order_bt].plot(
-        kind='bar', stacked=True, figsize=(10, 6),
+        kind='bar', stacked=True, figsize=(20,13),
         color=[palette_custom[c] for c in class_order], edgecolor='white', linewidth=0.5
     )
     plt.title('Proportion of Water Quality Classes by Water Body Type')
@@ -129,14 +123,14 @@ def ExploreData():
     annotate_counts(ax, n_per_bt)
     handles = [mpatches.Patch(color=palette_custom[c], label=class_labels[c]) for c in class_order]
     plt.legend(handles=handles, title='Water Quality', bbox_to_anchor=(1.05, 1), loc='upper left')
-    save_show('figures/data-exploration/03_water_quality_vs_body_type.png')
+    plt.savefig('figures/data-exploration/03_water_quality_vs_body_type.png')
 
     # -------------------------------------------------------------------
     # Figure 4 – pH Range by Class
     # -------------------------------------------------------------------
     df['pH_range'] = df['pH - Max'] - df['pH - Min']
 
-    plt.figure(figsize=(7, 5))
+    plt.figure(figsize=(15, 15))
     sns.boxplot(
         data=df,
         x='water_quality',
@@ -151,7 +145,7 @@ def ExploreData():
     plt.xlabel('Water Quality Class')
     plt.ylabel('pH Range (Max - Min)')
     plt.xticks(range(len(class_order)), x_tick_labels)
-    save_show('figures/data-exploration/04_ph_range_vs_quality.png')
+    plt.savefig('figures/data-exploration/04_ph_range_vs_quality.png')
 
 
     # -------------------------------------------------------------------
@@ -168,7 +162,7 @@ def ExploreData():
     n_per_st = counts_st.loc[order_st].sum(axis=1)
 
     ax = props_st.loc[order_st].plot(
-        kind='bar', stacked=True, figsize=(12, 6),
+        kind='bar', stacked=True, figsize=(20,13),
         color=[palette_custom[c] for c in class_order], edgecolor='white', linewidth=0.5
     )
     plt.title('Proportion of Water Quality Levels Across Indian States')
@@ -178,4 +172,4 @@ def ExploreData():
     annotate_counts(ax, n_per_st)
     handles = [mpatches.Patch(color=palette_custom[c], label=class_labels[c]) for c in class_order]
     plt.legend(handles=handles, title='Water Quality', bbox_to_anchor=(1.05, 1), loc='upper left')
-    save_show('figures/data-exploration/05_state_vs_quality_proportion.png')
+    plt.savefig('figures/data-exploration/05_state_vs_quality_proportion.png')
