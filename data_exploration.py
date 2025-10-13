@@ -76,7 +76,7 @@ def ExploreData():
     plt.ylabel('Number of Samples')
     plt.xticks(range(len(class_order)), x_tick_labels)
     plt.savefig('figures/data-exploration/01_water_quality_distribution_count.png', dpi=300)
-
+    plt.close()
 
     # -------------------------------------------------------------------
     # Figure 2 – Max Temperature by Class
@@ -97,7 +97,7 @@ def ExploreData():
     plt.ylabel('Temperature (°C) - Max')
     plt.xticks(range(len(class_order)), x_tick_labels)
     plt.savefig('figures/data-exploration/02_temp_max_vs_quality.png')
-
+    plt.close()
 
     # -------------------------------------------------------------------
     # Figure 3 – Proportion by Water Body Type
@@ -124,6 +124,8 @@ def ExploreData():
     handles = [mpatches.Patch(color=palette_custom[c], label=class_labels[c]) for c in class_order]
     plt.legend(handles=handles, title='Water Quality', bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.savefig('figures/data-exploration/03_water_quality_vs_body_type.png')
+    plt.close()
+
 
     # -------------------------------------------------------------------
     # Figure 4 – pH Range by Class
@@ -146,6 +148,7 @@ def ExploreData():
     plt.ylabel('pH Range (Max - Min)')
     plt.xticks(range(len(class_order)), x_tick_labels)
     plt.savefig('figures/data-exploration/04_ph_range_vs_quality.png')
+    plt.close()
 
 
     # -------------------------------------------------------------------
@@ -173,3 +176,4 @@ def ExploreData():
     handles = [mpatches.Patch(color=palette_custom[c], label=class_labels[c]) for c in class_order]
     plt.legend(handles=handles, title='Water Quality', bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.savefig('figures/data-exploration/05_state_vs_quality_proportion.png')
+    plt.close()

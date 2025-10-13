@@ -66,15 +66,22 @@ def ModelDataAndEvaluate():
     print(f"Avg test precision (macro):  {test_precision_macro:.4f}")
 
     # Confusion matrix
-    cm=confusion_matrix(y_test, y_pred)
+    cm = confusion_matrix(y_test, y_pred)
     print(cm)
-    cm_heatmap = sns.heatmap(cm, annot=True)
-    cm_heatmap.get_figure().savefig('figures/confusion_matrix')
+    plt.figure(figsize=(6, 5))
+    sns.heatmap(cm, annot=True)
+    plt.savefig('figures/confusion_matrix.png', dpi=300)
+    plt.close() 
 
-    # Save decision tree
-    fig, axes = plt.subplots(nrows = 1,ncols = 1,figsize = (4,4), dpi=300)
-    tree.plot_tree(clf,filled=True,rounded=True, ax=axes)
-    plt.savefig('figures/decision_tree.png')
+    # -------------------------------------------------------------------
+    # Decision Tree visualization
+    # -------------------------------------------------------------------
+    fig, ax = plt.subplots(figsize=(8, 6), dpi=300)  # increased size for clarity
+    tree.plot_tree(clf, filled=True, rounded=True, ax=ax, fontsize=6)
+    plt.title('Decision Tree')
+    plt.tight_layout()
+    plt.savefig('figures/decision_tree.png', dpi=300)
+    plt.close()
 
     # #_------------------------------
     # # # Multiclass proof
