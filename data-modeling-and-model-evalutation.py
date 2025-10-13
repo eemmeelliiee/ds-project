@@ -28,54 +28,48 @@ if PreviousDataComplete == False:
     sys.exit("ERROR: Not all required data found.") 
 print("All files found")
 
-#Define features/target
+# Define features/target
 X = df.drop(columns='water_quality')
 y = df['water_quality']
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
-clf = DecisionTreeClassifier(random_state=42)
+# Split dataset for final test
+X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, test_size=0.2, random_state=42)
+clf = DecisionTreeClassifier(random_state=42, class_weight='balanced')
+
+# Cross validation
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+f1_macro = make_scorer(f1_score, average='macro')
+cv_acc_scores = cross_val_score(clf, X_train, y_train, cv=cv, scoring='accuracy')
+cv_f1_scores = cross_val_score(clf, X_train, y_train, cv=cv, scoring=f1_macro)
+# Print mean of cv scores
+print(f"Mean CV accuracy score: {cv_acc_scores.mean():.4f}")
+print(f"Mean CV F1 score: {cv_f1_scores.mean():.4f}")
+
+# Test on test set
 clf.fit(X_train, y_train)
+test_acc_score = accuracy_score(y_test, clf.predict(X_test))
+test_f1_score = f1_score(y_test, clf.predict(X_test), average='macro')
+print(f"Test accuracy score: {test_acc_score:.4f}")
+print(f"Test F1 score: {test_f1_score:.4f}")
 
-pred = clf.predict(X_test)
-print(pred)
+# Classification report
+y_pred = clf.predict(X_test)
+cp = classification_report(y_test, y_pred)
+print('Classification report:\n',cp)
 
-print(clf.score(X_train, y_train))
-print(clf.score(X_test, y_test))
-
-print(classification_report(y_test, pred))
-cm=confusion_matrix(y_test, pred)
+# Confusion matrix
+cm=confusion_matrix(y_test, y_pred)
 print(cm)
-confusion_matrix = sns.heatmap(cm, annot=True)
-fig = confusion_matrix.get_figure()
+cm_heatmap = sns.heatmap(cm, annot=True)
+fig = cm_heatmap.get_figure()
 fig.savefig('figures/confusion_matrix')
 
-print(accuracy_score(y_test, pred))
-print(clf.score(X_test, y_test))
-
-# implement also for these:
-# recall_score()
-# precision_score()
-
-cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-scores = cross_val_score(clf, X_train, y_train, cv=cv, scoring='accuracy')
-print("Cross-validation accuracy scores:", scores)
-print("Mean CV accuracy:", scores.mean())
-
-test_accuracy = clf.score(X_test, y_test)
-print("Final test set accuracy:", test_accuracy)
-
-# Evaluate accuracy and macro-F1
-acc_scores = cross_val_score(clf, X, y, cv=cv, scoring='accuracy')
-f1_macro_scores = cross_val_score(clf, X, y, cv=cv, scoring=make_scorer(f1_score, average='macro'))
-print("Mean accuracy:", acc_scores.mean())
-print("Mean macro F1:", f1_macro_scores.mean())
-print(y.value_counts(normalize=True))
-
-# Multiclass proof
-print(clf.classes_)
-print(len(clf.classes_))
-
+# Save decision tree
 fig, axes = plt.subplots(nrows = 1,ncols = 1,figsize = (4,4), dpi=300)
 tree.plot_tree(clf,filled=True,rounded=True, ax=axes)
 plt.savefig('figures/decision_tree.png')
 
+# #_------------------------------
+# # # Multiclass proof
+# # print(clf.classes_)
+# # print(len(clf.classes_))
