@@ -2,7 +2,10 @@
 ## Instructions:
 Clone the repo. The dataset is included in folder ```data``` and thus does not need to be downloaded.
 
-```data-preparation.py``` cleans the original dataset and outputs ```cleaned_dataset.csv```, which is later used for the predictive modeling in ```data-modeling-and-model-evaluation.py```. 
+The main script runs the following methods:
+- ```PrepareData()``` from ```data_preparation.py``` which cleans the original dataset and outputs ```cleaned_dataset.csv``` (which is used in the remaining modules).
+- ```ModelDataAndEvaluate()``` from ```data_modeling–and–model_evaluation.py``` which models a decision tree and evaluates the resuls.
+- ```ExploreData()``` from ```data_evaluation.py``` which saves 5 insightful visualizations to ```/figures``` folder.
 
 <!--- 
 Download the dataset here:
