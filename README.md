@@ -7,9 +7,9 @@ Download the dataset here:
 
 Expected structure:
 ```
+
 dsproject/
   data/
     Indian_water_data.csv
+
 ´´´
-
-
