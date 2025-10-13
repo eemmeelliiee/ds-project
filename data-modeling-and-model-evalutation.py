@@ -45,17 +45,28 @@ cv_f1_scores = cross_val_score(clf, X_train, y_train, cv=cv, scoring=f1_macro)
 print(f"Mean CV accuracy score: {cv_acc_scores.mean():.4f}")
 print(f"Mean CV F1 score: {cv_f1_scores.mean():.4f}")
 
+from sklearn.metrics import accuracy_score, f1_score, recall_score, precision_score, classification_report
+
 # Test on test set
 clf.fit(X_train, y_train)
-test_acc_score = accuracy_score(y_test, clf.predict(X_test))
-test_f1_score = f1_score(y_test, clf.predict(X_test), average='macro')
-print(f"Test accuracy score: {test_acc_score:.4f}")
-print(f"Test F1 score: {test_f1_score:.4f}")
+y_pred = clf.predict(X_test)
+
+test_acc_score = accuracy_score(y_test, y_pred)
+test_f1_macro = f1_score(y_test, y_pred, average='macro')
+test_f1_weighted = f1_score(y_test, y_pred, average='weighted')
+test_recall_macro = recall_score(y_test, y_pred, average='macro')
+test_precision_macro = precision_score(y_test, y_pred, average='macro')
+
+print(f"Test accuracy score:     {test_acc_score:.4f}")
+print(f"Test F1 (macro):         {test_f1_macro:.4f}")
+print(f"Test F1 (weighted):      {test_f1_weighted:.4f}")
+print(f"Test recall (macro):     {test_recall_macro:.4f}")
+print(f"Test precision (macro):  {test_precision_macro:.4f}")
 
 # Classification report
-y_pred = clf.predict(X_test)
 cp = classification_report(y_test, y_pred)
-print('Classification report:\n',cp)
+print('\nClassification report:\n', cp)
+
 
 # Confusion matrix
 cm=confusion_matrix(y_test, y_pred)
