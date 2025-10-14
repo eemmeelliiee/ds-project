@@ -89,4 +89,4 @@ def PrepareData():
 
     # For lower dimensionality: Remove feature with highest correlation (Type Water Body_WATER TREATMENT PLANT (RAW WATER))
     df.drop(columns=['Type Water Body_WATER TREATMENT PLANT (RAW WATER)'], inplace=True)
-    df.to_csv('data/cleaned_dataset.csv')
+    df.to_csv('data/cleaned_dataset.csv', index=False)
