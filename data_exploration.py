@@ -11,7 +11,7 @@ from pathlib import Path
 import sys
 import matplotlib.patches as mpatches
 
-def ExploreData():
+def main():
 
     # -------------------------------------------------------------------
     # Load and validate data
@@ -177,3 +177,6 @@ def ExploreData():
     plt.legend(handles=handles, title='Water Quality', bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.savefig('figures/data-exploration/05_state_vs_quality_proportion.png')
     plt.close()
+
+if __name__ == "__main__":
+    main()
