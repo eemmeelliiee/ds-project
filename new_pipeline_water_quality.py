@@ -29,7 +29,7 @@ SHAP_PRUNE_THRESHOLD = 0.0  # keep features with mean SHAP > threshold
 SHAP_PRUNE_MIN_FEATURES = 25 # keep at least this many (by top-importance)
 
 # Columns not needed to determine water quality class
-IREL_COLS = [
+EARLY_DROP = [
     'STN code','Monitoring Location','Year',
     'Conductivity (¬µmho/cm) - Min','Conductivity (¬µmho/cm) - Max',
     'NitrateN (mg/L) - Min','NitrateN (mg/L) - Max',
@@ -107,7 +107,7 @@ class PandasPreprocessor(BaseEstimator, TransformerMixin):
         df = X.copy()
 
         # Drop irrelevant columns (early)
-        cols_to_drop = [c for c in IREL_COLS if c in df.columns]
+        cols_to_drop = [c for c in EARLY_DROP if c in df.columns]
         df.drop(columns=cols_to_drop, inplace=True, errors='ignore')
 
         # Handle "BDL" replacements (no row drops)
@@ -280,39 +280,34 @@ def main():
             class_idx = 2 if 2 in unique_classes else 1
 
             # Handle SHAP output types
-            # shap_vals may be: list (per class), 3D array (n_samples, n_features, n_classes), or 2D (binary)
-            if isinstance(shap_vals, list):  # TreeExplainer multiclass
-                shap_3d = np.stack(shap_vals, axis=-1)  # (n_samples, n_features, n_classes)
-            elif getattr(shap_vals, "ndim", 0) == 3:    # LinearExplainer multiclass
-                shap_3d = shap_vals                     # already (n_samples, n_features, n_classes)
-            else:                                       # binary case -> single output
-                shap_3d = shap_vals[..., None]          # (n_samples, n_features, 1)
+            if isinstance(shap_vals, list):
+                shap_class_vals = shap_vals[class_idx]
+            elif shap_vals.ndim == 3:
+                shap_class_vals = shap_vals[:, :, class_idx]
+            else:
+                shap_class_vals = shap_vals  # binary/regression
 
-            classes = list(getattr(fitted_model, "classes_", range(shap_3d.shape[-1])))
+            print(f"SHAP shape: {shap_class_vals.shape} | Features: {X_df.shape}")
 
-            # 1) Plot a summary for EACH class
-            for k, cls in enumerate(classes):
-                shap.summary_plot(shap_3d[:, :, k], features=X_df, feature_names=feature_names, show=False)
-                plt.title(f"SHAP Summary - {name} (class={cls})")
-                plt.tight_layout()
-                plt.savefig(FIG_DIR / f"shap_summary_{name.replace(' ', '_').lower()}_class_{cls}.png", dpi=300)
-                plt.close()
-
-            # 2) Get per-class importances
-            per_class_importance = {
-                cls: pd.Series(np.mean(np.abs(shap_3d[:, :, k]), axis=0), index=feature_names).sort_values(ascending=False)
-                for k, cls in enumerate(classes)
-            }
-
-            # 3) If you want a single "global" importance across classes (for pruning):
-            global_importance = pd.Series(np.mean(np.abs(shap_3d), axis=(0, 2)), index=feature_names).sort_values(ascending=False)
-
+            # Plot and save SHAP summary
+            shap.summary_plot(
+                shap_class_vals,
+                features=X_df,
+                feature_names=feature_names,
+                show=False
+            )
+            plt.title(f"SHAP Summary - {name}")
+            plt.tight_layout()
+            shap_path = FIG_DIR / f"shap_summary_{name.replace(' ', '_').lower()}.png"
+            plt.savefig(shap_path, dpi=300)
+            plt.close()
+            print(f"SHAP summary plot saved to: {shap_path}")
 
             # Feature pruning based on SHAP importance
             if ENABLE_SHAP_FEATURE_PRUNE:
                 try:
                     # Compute mean SHAP per feature
-                    mean_abs = np.mean(np.abs(shap_3d), axis=0)
+                    mean_abs = np.mean(np.abs(shap_class_vals), axis=0)
                     shap_importance = pd.Series(mean_abs, index=feature_names).sort_values(ascending=False)
 
                     # Decide which to keep
