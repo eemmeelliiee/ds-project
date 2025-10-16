@@ -10,9 +10,8 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
 from sklearn.model_selection import train_test_split, StratifiedKFold, cross_validate
-from sklearn.metrics import (classification_report, confusion_matrix, accuracy_score, f1_score,balanced_accuracy_score)
+from sklearn.metrics import (classification_report, confusion_matrix, accuracy_score, f1_score,balanced_accuracy_score, precision_score, recall_score)
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.linear_model import LogisticRegression
 from sklearn.base import clone as clone
 import matplotlib.patches as mpatches
 
@@ -120,9 +119,9 @@ def explore_data():
     x_tick_labels = [class_labels[i] for i in class_order]
 
     palette_custom = {
-        2: "#364B9A",  # Blue  → Class A (Good)
-        1: "#6EA6CD",  # Light Blue → Class C (Moderate)
-        0: "#DD3D2D"   # Red   → Class Other (Poor)
+        2: "#364B9A",  # Class A (Good)
+        1: "#6EA6CD",  # Class C (Moderate)
+        0: "#DD3D2D"   # Class Other (Poor)
     }
 
     def annotate_counts(ax, counts, offset=0.08):
@@ -344,14 +343,8 @@ def main():
             criterion="gini",
             max_depth=6,
             min_samples_leaf=5,
-            min_samples_split=10
+            min_samples_split=2
         ),
-        "Logistic Regression": LogisticRegression(
-            random_state=RANDOM_STATE,
-            max_iter=3000,
-            class_weight="balanced",
-            solver="lbfgs"
-        )
     }
 
     # Evaluation
@@ -387,9 +380,13 @@ def main():
         y_pred = pipe.predict(X_test)
 
         print("\nTest Metrics:")
-        print(f"Accuracy        : {accuracy_score(y_test, y_pred):.4f}")
-        print(f"Macro F1        : {f1_score(y_test, y_pred, average='macro'): .4f}")
-        print(f"Balanced Acc    : {balanced_accuracy_score(y_test, y_pred):.4f}")
+        print(f"Test accuracy        : {accuracy_score(y_test, y_pred):.4f}")
+        print(f"Test f1_macro        : {f1_score(y_test, y_pred, average='macro'): .4f}")
+        print(f"Test balanced_accuracy    : {balanced_accuracy_score(y_test, y_pred):.4f}")
+        print(f"Test precision_macro    : {precision_score(y_test, y_pred, average='macro'):.4f}")
+        print(f"Test recall_macro    : {recall_score(y_test, y_pred, average='macro'):.4f}")
+
+
         print("Classification Report:")
         print(classification_report(y_test, y_pred))
 
@@ -505,10 +502,12 @@ def main():
                     reduced_pipe.fit(X_train, y_train)
                     y_pred_red = reduced_pipe.predict(X_test)
                     print("\n[Reduced] Test Metrics:")
-                    print(f"Accuracy        : {accuracy_score(y_test, y_pred_red):.4f}")
-                    print(f"Macro F1        : {f1_score(y_test, y_pred_red, average='macro'): .4f}")
-                    print(f"Balanced Acc    : {balanced_accuracy_score(y_test, y_pred_red):.4f}")
-                    print("Classification Report (Reduced):")
+                    print("\nTest Metrics:")
+                    print(f"Test accuracy        : {accuracy_score(y_test, y_pred):.4f}")
+                    print(f"Test f1_macro        : {f1_score(y_test, y_pred, average='macro'): .4f}")
+                    print(f"Test balanced_accuracy    : {balanced_accuracy_score(y_test, y_pred):.4f}")
+                    print(f"Test precision_macro    : {precision_score(y_test, y_pred, average='macro'):.4f}")
+                    print(f"Test recall_macro    : {recall_score(y_test, y_pred, average='macro'):.4f}")
                     print(classification_report(y_test, y_pred_red))
 
                 except Exception as _e:
