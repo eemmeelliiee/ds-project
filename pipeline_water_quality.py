@@ -360,8 +360,7 @@ def main():
 
         pipe = Pipeline([
         ("prep", PandasPreprocessor()), # Fitted clone, ready for transform() and predict()
-        ("imputer", SimpleImputer(strategy="median")),
-        ("scaler", StandardScaler()),  
+        ("imputer", SimpleImputer(strategy="median")),  
         ("clf", model)
         ])
 
@@ -412,15 +411,13 @@ def main():
             fitted_model = pipe.named_steps["clf"]
             prep = pipe.named_steps["prep"]
             imputer = pipe.named_steps["imputer"]
-            scaler = pipe.named_steps["scaler"]
 
             # Apply same preprocessing to X_train
             X_train_prepped = prep.transform(X_train)
             X_train_imputed = imputer.transform(X_train_prepped)
-            X_train_scaled = scaler.transform(X_train_imputed)
 
             feature_names = prep.get_feature_names_out()
-            X_df = pd.DataFrame(X_train_scaled, columns=feature_names)
+            X_df = pd.DataFrame(X_train_imputed, columns=feature_names)
 
             if "tree" in str(type(fitted_model)).lower():
                 explainer = shap.TreeExplainer(fitted_model)
@@ -485,7 +482,6 @@ def main():
                         ("prep", PandasPreprocessor()),
                         ("select", ColumnSelector(keep_features)),
                         ("imputer", SimpleImputer(strategy="median")),
-                        ("scaler", StandardScaler()),
                         ("clf", reduced_model)
                     ])
 
