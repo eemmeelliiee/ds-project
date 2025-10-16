@@ -370,7 +370,9 @@ def main():
         scoring = {
             "accuracy": "accuracy",
             "f1_macro": "f1_macro",
-            "balanced_accuracy": "balanced_accuracy"
+            "balanced_accuracy": "balanced_accuracy",
+            'precision_macro': 'precision_macro',
+            "recall_macro": "recall_macro"
         }
 
         cv_results = cross_validate(pipe, X_train, y_train, cv=cv, scoring=scoring, return_train_score=False)
@@ -378,6 +380,8 @@ def main():
         print(f"CV accuracy: {cv_results['test_accuracy'].mean():.4f} ± {cv_results['test_accuracy'].std():.4f}")
         print(f"CV f1_macro: {cv_results['test_f1_macro'].mean():.4f} ± {cv_results['test_f1_macro'].std():.4f}")
         print(f"CV balanced_accuracy: {cv_results['test_balanced_accuracy'].mean():.4f} ± {cv_results['test_balanced_accuracy'].std():.4f}")
+        print(f"CV precision_macro: {cv_results['test_precision_macro'].mean():.4f} ± {cv_results['test_precision_macro'].std():.4f}")
+        print(f"CV recall_macro: {cv_results['test_recall_macro'].mean():.4f} ± {cv_results['test_recall_macro'].std():.4f}")
 
         # Train and evaluate on test set
         pipe.fit(X_train, y_train)
@@ -490,12 +494,16 @@ def main():
                     scoring = {
                         "accuracy": "accuracy",
                         "f1_macro": "f1_macro",
-                        "balanced_accuracy": "balanced_accuracy"
+                        "balanced_accuracy": "balanced_accuracy",
+                        'precision_macro': 'precision_macro',
+                        "recall_macro": "recall_macro"
                     }
                     cv_reduced = cross_validate(reduced_pipe, X_train, y_train, cv=cv, scoring=scoring, return_train_score=False)
                     print(f"[Reduced] CV accuracy: {cv_reduced['test_accuracy'].mean():.4f} ± {cv_reduced['test_accuracy'].std():.4f}")
                     print(f"[Reduced] CV f1_macro: {cv_reduced['test_f1_macro'].mean():.4f} ± {cv_reduced['test_f1_macro'].std():.4f}")
                     print(f"[Reduced] CV balanced_acc: {cv_reduced['test_balanced_accuracy'].mean():.4f} ± {cv_reduced['test_balanced_accuracy'].std():.4f}")
+                    print(f"[Reduced] CV precision_macro: {cv_reduced['test_precision_macro'].mean():.4f} ± {cv_reduced['test_precision_macro'].std():.4f}")
+                    print(f"[Reduced] CV recall_macro: {cv_reduced['test_recall_macro'].mean():.4f} ± {cv_reduced['test_recall_macro'].std():.4f}")
 
                     # Test on reduced
                     reduced_pipe.fit(X_train, y_train)
