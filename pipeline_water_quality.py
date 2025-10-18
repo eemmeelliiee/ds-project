@@ -146,9 +146,11 @@ def explore_data():
     )
 
     plt.title('Distribution of Samples by Water Quality Class')
-    plt.xlabel('Water Quality Class')
-    plt.ylabel('Number of Samples')
+    plt.xlabel('Water Quality Class', fontsize = 12)
+    plt.ylabel('Number of Samples', fontsize = 12)
     plt.xticks(range(len(class_order)), x_tick_labels)
+    handles = [mpatches.Patch(color=palette_custom[c], label=class_labels[c]) for c in class_order]
+    plt.legend(handles = handles, title='Water Quality', bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.savefig('figures/data-exploration/01_water_quality_distribution_count.png', dpi=300)
     plt.close()
 
@@ -165,9 +167,11 @@ def explore_data():
         legend=False
     )
     plt.title('Temperature (°C) - Max by Water Quality Class')
-    plt.xlabel('Water Quality Class')
-    plt.ylabel('Temperature (°C) - Max')
+    plt.xlabel('Water Quality Class', fontsize = 12)
+    plt.ylabel('Temperature (°C) - Max', fontsize = 12)
     plt.xticks(range(len(class_order)), x_tick_labels)
+    handles = [mpatches.Patch(color=palette_custom[c], label=class_labels[c]) for c in class_order]
+    plt.legend(handles = handles, title='Water Quality', bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.savefig('figures/data-exploration/02_temp_max_vs_quality.png')
     plt.close()
 
@@ -187,9 +191,9 @@ def explore_data():
         color=[palette_custom[c] for c in class_order], edgecolor='white', linewidth=0.5
     )
     plt.title('Proportion of Water Quality Classes by Water Body Type')
-    plt.xlabel('Water Body Type')
-    plt.ylabel('Proportion of Samples')
-    plt.xticks(rotation=45, ha='right')
+    plt.xlabel('Water Body Type', fontsize = 12)
+    plt.ylabel('Proportion of Samples', fontsize = 12)
+    plt.xticks(rotation=45, ha='right', fontsize = 7)
     annotate_counts(ax, n_per_bt)
     handles = [mpatches.Patch(color=palette_custom[c], label=class_labels[c]) for c in class_order]
     plt.legend(handles=handles, title='Water Quality', bbox_to_anchor=(1.05, 1), loc='upper left')
@@ -212,9 +216,11 @@ def explore_data():
         legend=False
     )
     plt.title('pH Range (Max - Min) by Water Quality Class')
-    plt.xlabel('Water Quality Class')
-    plt.ylabel('pH Range (Max - Min)')
+    plt.xlabel('Water Quality Class', fontsize = 12)
+    plt.ylabel('pH Range (Max - Min)', fontsize = 12)
     plt.xticks(range(len(class_order)), x_tick_labels)
+    handles = [mpatches.Patch(color=palette_custom[c], label=class_labels[c]) for c in class_order]
+    plt.legend(handles = handles, title='Water Quality', bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.savefig('figures/data-exploration/04_ph_range_vs_quality.png')
     plt.close()
 
@@ -234,9 +240,9 @@ def explore_data():
         color=[palette_custom[c] for c in class_order], edgecolor='white', linewidth=0.5
     )
     plt.title('Proportion of Water Quality Levels Across Indian States')
-    plt.xlabel('State')
-    plt.ylabel('Proportion of Samples')
-    plt.xticks(rotation=45, ha='right')
+    plt.xlabel('State', fontsize = 12)
+    plt.ylabel('Proportion of Samples', fontsize = 12)
+    plt.xticks(rotation=45, ha='right', fontsize = 7)
     annotate_counts(ax, n_per_st)
     handles = [mpatches.Patch(color=palette_custom[c], label=class_labels[c]) for c in class_order]
     plt.legend(handles=handles, title='Water Quality', bbox_to_anchor=(1.05, 1), loc='upper left')
