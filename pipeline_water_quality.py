@@ -10,7 +10,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
 from sklearn.model_selection import train_test_split, StratifiedKFold, cross_validate
-from sklearn.metrics import (classification_report, confusion_matrix, accuracy_score, f1_score,balanced_accuracy_score, precision_score, recall_score)
+from sklearn.metrics import (classification_report, confusion_matrix, f1_score,balanced_accuracy_score, precision_score, recall_score)
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.base import clone as clone
 import matplotlib.patches as mpatches
@@ -72,11 +72,14 @@ def make_target_column(df: pd.DataFrame) -> pd.Series:
         'Total Coliform (MPN/100ml) - Max'
     ]
 
-    # Replace BDL where it could appear
+    # Print obj
+    print(tmp.select_dtypes(include=['object']).columns)
+
+    # Replace BDL in relevant object columns
     if 'Dissolved - Min' in tmp.columns:
-        tmp['Dissolved - Min'] = tmp['Dissolved - Min'].replace('BDL', 0.3/2)  # DO LOD/2
+        tmp['Dissolved - Min'] = tmp['Dissolved - Min'].replace('BDL', 0.3/2)  # = DO LOD/2
     if 'BOD (mg/L) - Max' in tmp.columns:
-        tmp['BOD (mg/L) - Max'] = tmp['BOD (mg/L) - Max'].replace('BDL', 1.0/2)  # BOD LOD/2
+        tmp['BOD (mg/L) - Max'] = tmp['BOD (mg/L) - Max'].replace('BDL', 1.0/2)  # = BOD LOD/2
 
     # Coerce needed columns to numeric
     for c in cols_needed:
@@ -326,7 +329,7 @@ def main():
 
     #Create and save a cleaned dataset for analysis
     preprocessor = PandasPreprocessor()
-    preprocessor.fit(raw) # fit preprocessing steps (e.g., dummy variables, scaling)
+    preprocessor.fit(raw) # fit preprocessing steps (e.g., dummy variables)
     cleaned_df = preprocessor.transform(raw)
 
     # Add the target column
@@ -360,31 +363,28 @@ def main():
         # Cross-validation
         cv = StratifiedKFold(n_splits=N_SPLITS, shuffle=True, random_state=RANDOM_STATE)
         scoring = {
-            "accuracy": "accuracy",
-            "f1_macro": "f1_macro",
+            "f1_weighted": "f1_weighted",
             "balanced_accuracy": "balanced_accuracy",
-            'precision_macro': 'precision_macro',
-            "recall_macro": "recall_macro"
+            'precision_weighted': 'precision_weighted',
+            "recall_weighted": "recall_weighted"
         }
 
         cv_results = cross_validate(pipe, X_train, y_train, cv=cv, scoring=scoring, return_train_score=False)
 
-        print(f"CV accuracy: {cv_results['test_accuracy'].mean():.4f} ± {cv_results['test_accuracy'].std():.4f}")
-        print(f"CV f1_macro: {cv_results['test_f1_macro'].mean():.4f} ± {cv_results['test_f1_macro'].std():.4f}")
-        print(f"CV balanced_accuracy: {cv_results['test_balanced_accuracy'].mean():.4f} ± {cv_results['test_balanced_accuracy'].std():.4f}")
-        print(f"CV precision_macro: {cv_results['test_precision_macro'].mean():.4f} ± {cv_results['test_precision_macro'].std():.4f}")
-        print(f"CV recall_macro: {cv_results['test_recall_macro'].mean():.4f} ± {cv_results['test_recall_macro'].std():.4f}")
+        print(f"CV f1_weighted: {cv_results['test_f1_weighted'].mean():.3f} ± {cv_results['test_f1_weighted'].std():.3f}")
+        print(f"CV balanced_accuracy: {cv_results['test_balanced_accuracy'].mean():.3f} ± {cv_results['test_balanced_accuracy'].std():.3f}")
+        print(f"CV precision_weighted: {cv_results['test_precision_weighted'].mean():.3f} ± {cv_results['test_precision_weighted'].std():.3f}")
+        print(f"CV recall_weighted: {cv_results['test_recall_weighted'].mean():.3f} ± {cv_results['test_recall_weighted'].std():.3f}")
 
         # Train and evaluate on test set
         pipe.fit(X_train, y_train)
         y_pred = pipe.predict(X_test)
 
         print("\nTest Metrics:")
-        print(f"Test accuracy        : {accuracy_score(y_test, y_pred):.4f}")
-        print(f"Test f1_macro        : {f1_score(y_test, y_pred, average='macro'): .4f}")
-        print(f"Test balanced_accuracy    : {balanced_accuracy_score(y_test, y_pred):.4f}")
-        print(f"Test precision_macro    : {precision_score(y_test, y_pred, average='macro'):.4f}")
-        print(f"Test recall_macro    : {recall_score(y_test, y_pred, average='macro'):.4f}")
+        print(f"Test f1_weighted        : {f1_score(y_test, y_pred, average='weighted'): .3f}")
+        print(f"Test balanced_accuracy    : {balanced_accuracy_score(y_test, y_pred):.3f}")
+        print(f"Test precision_weighted    : {precision_score(y_test, y_pred, average='weighted'):.3f}")
+        print(f"Test recall_weighted    : {recall_score(y_test, y_pred, average='weighted'):.3f}")
 
 
         print("Classification Report:")
@@ -485,29 +485,26 @@ def main():
                     # CV on reduced
                     cv = StratifiedKFold(n_splits=N_SPLITS, shuffle=True, random_state=RANDOM_STATE)
                     scoring = {
-                        "accuracy": "accuracy",
-                        "f1_macro": "f1_macro",
+                        "f1_weighted": "f1_weighted",
                         "balanced_accuracy": "balanced_accuracy",
-                        'precision_macro': 'precision_macro',
-                        "recall_macro": "recall_macro"
+                        'precision_weighted': 'precision_weighted',
+                        "recall_weighted": "recall_weighted"
                     }
                     cv_reduced = cross_validate(reduced_pipe, X_train, y_train, cv=cv, scoring=scoring, return_train_score=False)
-                    print(f"[Reduced] CV accuracy: {cv_reduced['test_accuracy'].mean():.4f} ± {cv_reduced['test_accuracy'].std():.4f}")
-                    print(f"[Reduced] CV f1_macro: {cv_reduced['test_f1_macro'].mean():.4f} ± {cv_reduced['test_f1_macro'].std():.4f}")
-                    print(f"[Reduced] CV balanced_acc: {cv_reduced['test_balanced_accuracy'].mean():.4f} ± {cv_reduced['test_balanced_accuracy'].std():.4f}")
-                    print(f"[Reduced] CV precision_macro: {cv_reduced['test_precision_macro'].mean():.4f} ± {cv_reduced['test_precision_macro'].std():.4f}")
-                    print(f"[Reduced] CV recall_macro: {cv_reduced['test_recall_macro'].mean():.4f} ± {cv_reduced['test_recall_macro'].std():.4f}")
+                    print(f"[Reduced] CV f1_weighted: {cv_reduced['test_f1_weighted'].mean():.3f} ± {cv_reduced['test_f1_weighted'].std():.3f}")
+                    print(f"[Reduced] CV balanced_acc: {cv_reduced['test_balanced_accuracy'].mean():.3f} ± {cv_reduced['test_balanced_accuracy'].std():.3f}")
+                    print(f"[Reduced] CV precision_weighted: {cv_reduced['test_precision_weighted'].mean():.3f} ± {cv_reduced['test_precision_weighted'].std():.3f}")
+                    print(f"[Reduced] CV recall_weighted: {cv_reduced['test_recall_weighted'].mean():.3f} ± {cv_reduced['test_recall_weighted'].std():.3f}")
 
                     # Test on reduced
                     reduced_pipe.fit(X_train, y_train)
                     y_pred_red = reduced_pipe.predict(X_test)
                     print("\n[Reduced] Test Metrics:")
                     print("\nTest Metrics:")
-                    print(f"Test accuracy        : {accuracy_score(y_test, y_pred):.4f}")
-                    print(f"Test f1_macro        : {f1_score(y_test, y_pred, average='macro'): .4f}")
-                    print(f"Test balanced_accuracy    : {balanced_accuracy_score(y_test, y_pred):.4f}")
-                    print(f"Test precision_macro    : {precision_score(y_test, y_pred, average='macro'):.4f}")
-                    print(f"Test recall_macro    : {recall_score(y_test, y_pred, average='macro'):.4f}")
+                    print(f"Test f1_weighted        : {f1_score(y_test,  y_pred_red, average='weighted'): .3f}")
+                    print(f"Test balanced_accuracy    : {balanced_accuracy_score(y_test,  y_pred_red):.3f}")
+                    print(f"Test precision_weighted    : {precision_score(y_test,  y_pred_red, average='weighted'):.3f}")
+                    print(f"Test recall_weighted    : {recall_score(y_test,  y_pred_red, average='weighted'):.3f}")
                     print(classification_report(y_test, y_pred_red))
 
                 except Exception as _e:
