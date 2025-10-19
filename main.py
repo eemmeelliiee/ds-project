@@ -1,10 +1,12 @@
 # main.py
-from pipeline_water_quality import main as train_model
+from pipeline_and_model import main as pipeline_and_model
 from explore_data import main as explore_data
 
 if __name__ == "__main__":
     print("=== Starting data pipeline ===")
-    train_model()
+    print("=== Starting model training ===")
+    print("=== Starting model evaluation ===")
+    pipeline_and_model()
     
     print("\n=== Starting data exploration ===")
     explore_data()
