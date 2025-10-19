@@ -1,6 +1,6 @@
 # main.py
-from pipeline_and_model import main as pipeline_and_model
-from explore_data import main as explore_data
+from src.pipeline_and_model import main as pipeline_and_model
+from src.explore_data import main as explore_data
 
 if __name__ == "__main__":
     print("=== Starting data pipeline ===")
