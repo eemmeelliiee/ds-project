@@ -1,0 +1,439 @@
+# pipeline_water_quality.py
+from pathlib import Path
+import sys
+import numpy as np
+import pandas as pd
+import shap
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.impute import SimpleImputer
+from sklearn.model_selection import StratifiedKFold, cross_validate, train_test_split
+from sklearn.metrics import (
+    classification_report, confusion_matrix, f1_score, balanced_accuracy_score,
+    precision_score, recall_score, log_loss
+)
+from sklearn.pipeline import Pipeline
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.calibration import calibration_curve
+
+# ===============================
+# Config
+# ===============================
+RAW_CSV = "data/original_dataset.csv"
+RANDOM_STATE = 42
+TEST_SIZE = 0.20
+N_SPLITS = 5
+
+FIG_DIR = Path("figures")
+EXP_DIR = FIG_DIR / "data-exploration"
+
+# SHAP Based feature pruning
+ENABLE_SHAP_FEATURE_PRUNE = True  # set to False to disable
+SHAP_PRUNE_THRESHOLD = 0.0        # keep features with mean SHAP > threshold
+SHAP_PRUNE_MIN_FEATURES = 25      # keep at least this many (by top-importance)
+
+# Columns not needed to determine water quality class
+EARLY_DROP = [
+    'STN code','Monitoring Location','Year',
+    'Conductivity (¬µmho/cm) - Min','Conductivity (¬µmho/cm) - Max',
+    'NitrateN (mg/L) - Min','NitrateN (mg/L) - Max',
+    'Fecal Coliform (MPN/100ml) - Min','Fecal Coliform (MPN/100ml) - Max',
+    'Fecal - Min','Fecal - Max'
+]
+
+# Object columns to be converted to float
+OBJ_TO_FLOAT = ['Dissolved - Min','BOD (mg/L) - Min','Total Coliform (MPN/100ml) - Min']
+
+# Columns not relevant after determining water quality class (target column)
+DROP_AFTER_TARGET = [
+    'Total Coliform (MPN/100ml) - Min','Total Coliform (MPN/100ml) - Max',
+    'BOD (mg/L) - Min','BOD (mg/L) - Max','Dissolved - Max'
+]
+
+# Categorical columns to be dummy encoded
+CATEGORICAL_COLS = ['Type Water Body', 'State Name']
+
+# Path used for data exploration/visualization
+CLEANED_PATH = Path("data/cleaned_dataset.csv")
+
+# ===============================
+# Utilities
+# ===============================
+def ensure_dirs():
+    FIG_DIR.mkdir(parents=True, exist_ok=True)
+    EXP_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def load_raw_df(path: str) -> pd.DataFrame:
+    p = Path(path)
+    if not p.exists():
+        sys.exit(f"ERROR: Input file not found at {path}")
+    return pd.read_csv(p)
+
+
+# Build water_quality target using CPCB rules
+def make_target_column(df: pd.DataFrame) -> pd.Series:
+    tmp = df.copy()
+
+    # Columns needed to determine water quality
+    cols_needed = [
+        'pH - Min', 'pH - Max',
+        'Dissolved - Min',
+        'BOD (mg/L) - Max',
+        'Total Coliform (MPN/100ml) - Max'
+    ]
+
+    # Print object columns
+    print(tmp.select_dtypes(include=['object']).columns)
+
+    # Replace BDL in relevant object columns
+    if 'Dissolved - Min' in tmp.columns:
+        tmp['Dissolved - Min'] = tmp['Dissolved - Min'].replace('BDL', 0.3/2)  # = DO LOD/2
+    if 'BOD (mg/L) - Max' in tmp.columns:
+        tmp['BOD (mg/L) - Max'] = tmp['BOD (mg/L) - Max'].replace('BDL', 1.0/2)  # = BOD LOD/2
+
+    # Coerce needed columns to numeric
+    for c in cols_needed:
+        if c in tmp.columns:
+            tmp[c] = pd.to_numeric(tmp[c], errors='coerce')
+
+    # CPCB rules
+    class_a = (
+        (tmp['pH - Min'] >= 6.5) & (tmp['pH - Max'] <= 8.5) &
+        (tmp['Dissolved - Min'] >= 6) &
+        (tmp['BOD (mg/L) - Max'] <= 2) &
+        (tmp['Total Coliform (MPN/100ml) - Max'] <= 50)
+    )
+    class_c = (
+        (tmp['pH - Min'] >= 6) & (tmp['pH - Max'] <= 9) &
+        (tmp['Dissolved - Min'] >= 4) &
+        (tmp['BOD (mg/L) - Max'] <= 3) &
+        (tmp['Total Coliform (MPN/100ml) - Max'] <= 5000)
+    )
+    return np.select([class_a, class_c], [2, 1], default=0)
+
+
+def save_calibration_curve(y_true, y_pred, y_proba_max, title, path: Path):
+    # 1. Compare predicted confidence vs. actual correctness
+    y_true_binary = (y_true == y_pred).astype(int)
+    prob_true, prob_pred = calibration_curve(y_true_binary, y_proba_max, n_bins=10)
+
+    plt.figure(figsize=(6, 6))
+    plt.plot(prob_pred, prob_true, marker='o', label='Model calibration')
+    plt.plot([0, 1], [0, 1], 'k--', label='Perfect calibration')
+    plt.xlabel("Predicted confidence")
+    plt.ylabel("Observed accuracy")
+    plt.title(title)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(path, dpi=300)
+    plt.close()
+
+# ===============================
+# Custom sklearn transformers
+# ===============================
+class PandasPreprocessor(BaseEstimator, TransformerMixin):
+    def __init__(self):
+        self.feature_names_ = None
+
+    def _base_prepare(self, X: pd.DataFrame) -> pd.DataFrame:
+        df = X.copy()
+
+        # Drop irrelevant columns (early)
+        cols_to_drop = [c for c in EARLY_DROP if c in df.columns]
+        df.drop(columns=cols_to_drop, inplace=True, errors='ignore')
+
+        # Handle BDL replacements (no row drops)
+        df.replace(to_replace={'Dissolved - Min': 'BDL'}, value=0.3/2, inplace=True)
+        df.replace(to_replace={'BOD (mg/L) - Max': 'BDL'}, value=1.0/2, inplace=True)
+
+        # Cast "numerical" objects to numeric (NaNs allowed, later impute)
+        for c in OBJ_TO_FLOAT:
+            if c in df.columns:
+                df[c] = pd.to_numeric(df[c], errors='coerce')
+
+        # Drop post-target (leakage) columns
+        cols_to_drop2 = [c for c in DROP_AFTER_TARGET if c in df.columns]
+        df.drop(columns=cols_to_drop2, inplace=True, errors='ignore')
+
+        return df
+
+    def fit(self, X, y=None):
+        df = self._base_prepare(X)
+        existing_cats = [c for c in CATEGORICAL_COLS if c in df.columns]
+        if existing_cats:
+            df = pd.get_dummies(df, columns=existing_cats, dtype=int)
+        self.feature_names_ = df.columns.tolist()
+        return self
+
+    def transform(self, X):
+        df = self._base_prepare(X)
+        existing_cats = [c for c in CATEGORICAL_COLS if c in df.columns]
+        if existing_cats:
+            df = pd.get_dummies(df, columns=existing_cats, dtype=int)
+
+        # Align to fitted columns (add missing with 0, drop extras, order columns)
+        for col in self.feature_names_:
+            if col not in df.columns:
+                df[col] = 0
+        return df[self.feature_names_]
+
+    def get_feature_names_out(self):
+        return np.array(self.feature_names_ if self.feature_names_ is not None else [])
+
+
+class ColumnSelector(BaseEstimator, TransformerMixin):
+    def __init__(self, columns=None):
+        self.columns = columns
+
+    def fit(self, X, y=None):
+        self.columns_ = None if self.columns is None else list(self.columns)
+        return self
+
+    def transform(self, X):
+        import pandas as _pd
+        if self.columns_ is None:
+            return X
+        df = X if hasattr(X, "columns") else _pd.DataFrame(X, columns=self.columns_)
+        cols = [c for c in self.columns_ if c in df.columns]
+        return df[cols]
+
+
+# ===============================
+# Main
+# ===============================
+def main():
+    ensure_dirs()
+
+    raw = load_raw_df(RAW_CSV)
+    y = make_target_column(raw)
+    X_train, X_test, y_train, y_test = train_test_split(
+        raw, y, test_size=TEST_SIZE, stratify=y, random_state=RANDOM_STATE
+    )
+
+    # Create and save a cleaned dataset for analysis
+    preprocessor = PandasPreprocessor().fit(raw)
+    cleaned_df = preprocessor.transform(raw)
+    cleaned_df['water_quality'] = make_target_column(raw)
+    CLEANED_PATH.parent.mkdir(exist_ok=True, parents=True)
+    cleaned_df.to_csv(CLEANED_PATH, index=False)
+    print(f"Cleaned dataset saved to: {CLEANED_PATH}")
+
+    models = {
+        "Decision Tree": DecisionTreeClassifier(
+            random_state=RANDOM_STATE,
+            class_weight="balanced",
+            criterion="gini",
+            max_depth=6,
+            min_samples_leaf=5,
+            min_samples_split=2
+        ),
+    }
+
+    # Common CV setup
+    cv = StratifiedKFold(n_splits=N_SPLITS, shuffle=True, random_state=RANDOM_STATE)
+    scoring = {
+        "f1_weighted": "f1_weighted",
+        "balanced_accuracy": "balanced_accuracy",
+        'precision_weighted': 'precision_weighted',
+        "recall_weighted": "recall_weighted",
+        "neg_log_loss": "neg_log_loss"
+    }
+
+    for name, model in models.items():
+        print(f"\n=== Evaluating: {name} ===")
+
+        pipe = Pipeline([
+            ("prep", PandasPreprocessor()),
+            ("imputer", SimpleImputer(strategy="median")),
+            ("clf", model)
+        ])
+
+        # Cross-validation
+        cv_results = cross_validate(pipe, X_train, y_train, cv=cv, scoring=scoring, return_train_score=False)
+
+        print(f"CV f1_weighted: {cv_results['test_f1_weighted'].mean():.3f} ± {cv_results['test_f1_weighted'].std():.3f}")
+        print(f"CV balanced_accuracy: {cv_results['test_balanced_accuracy'].mean():.3f} ± {cv_results['test_balanced_accuracy'].std():.3f}")
+        print(f"CV precision_weighted: {cv_results['test_precision_weighted'].mean():.3f} ± {cv_results['test_precision_weighted'].std():.3f}")
+        print(f"CV recall_weighted: {cv_results['test_recall_weighted'].mean():.3f} ± {cv_results['test_recall_weighted'].std():.3f}")
+        print(f"CV log_loss: {-cv_results['test_neg_log_loss'].mean():.3f} ± {-cv_results['test_neg_log_loss'].std():.3f}")
+
+        # Train and evaluate on test set
+        pipe.fit(X_train, y_train)
+
+        # Predict-proba (main model)
+        y_proba = pipe.predict_proba(X_test)
+        classes = pipe.named_steps["clf"].classes_
+        proba_cols = [f"proba_{int(c)}" for c in classes]
+
+        proba_df = pd.DataFrame(y_proba, columns=proba_cols)
+        proba_df["y_true"] = np.array(y_test)
+        proba_df["y_pred"] = pipe.predict(X_test)
+        proba_df["y_pred_confidence"] = y_proba.max(axis=1)
+
+        proba_csv = FIG_DIR / f"test_pred_proba_{name.replace(' ', '_').lower()}.csv"
+        proba_df.to_csv(proba_csv, index=False)
+        print(f"[Proba] Saved per-sample probabilities to: {proba_csv}")
+
+        # Calibration (main model)
+        calib_path = FIG_DIR / f"calibration_curve_{name.replace(' ', '_').lower()}.png"
+        save_calibration_curve(
+            proba_df["y_true"], proba_df["y_pred"], proba_df["y_pred_confidence"],
+            f"Calibration Curve – {name}", calib_path
+        )
+        print(f"[Proba] Saved calibration curve to: {calib_path}")
+
+        # Confidence histogram
+        plt.figure(figsize=(6, 4))
+        sns.histplot(proba_df["y_pred_confidence"], bins=20, edgecolor="white")
+        plt.title(f"Prediction Confidence (max class prob) — {name}")
+        plt.xlabel("Max predicted probability")
+        plt.ylabel("Count")
+        plt.tight_layout()
+        plt.savefig(FIG_DIR / f"confidence_hist_{name.replace(' ', '_').lower()}.png", dpi=300)
+        plt.close()
+
+        y_pred = pipe.predict(X_test)
+        print("\nTest Metrics:")
+        print(f"Test f1_weighted        : {f1_score(y_test, y_pred, average='weighted'): .3f}")
+        print(f"Test balanced_accuracy    : {balanced_accuracy_score(y_test, y_pred):.3f}")
+        print(f"Test precision_weighted    : {precision_score(y_test, y_pred, average='weighted'):.3f}")
+        print(f"Test recall_weighted    : {recall_score(y_test, y_pred, average='weighted'):.3f}")
+        print("Classification Report:")
+        print(classification_report(y_test, y_pred))
+
+        y_proba = pipe.predict_proba(X_test)
+        test_logloss = log_loss(y_test, y_proba)
+        print(f"Test log loss           : {test_logloss:.3f}")
+
+        # Confusion matrix
+        cm = confusion_matrix(y_test, y_pred)
+        plt.figure(figsize=(6, 5))
+        sns.heatmap(cm, annot=True, fmt='d')
+        plt.title(f"Confusion Matrix - {name}")
+        plt.xlabel("Predicted")
+        plt.ylabel("True")
+        plt.tight_layout()
+        plt.savefig(FIG_DIR / f"confusion_matrix_{name.replace(' ', '_').lower()}.png", dpi=300)
+        plt.close()
+
+        # SHAP
+        print("Computing SHAP values...")
+        try:
+            fitted_model = pipe.named_steps["clf"]
+            prep = pipe.named_steps["prep"]
+            imputer = pipe.named_steps["imputer"]
+
+            X_train_prepped = prep.transform(X_train)
+            X_train_imputed = imputer.transform(X_train_prepped)
+
+            feature_names = prep.get_feature_names_out()
+            X_df = pd.DataFrame(X_train_imputed, columns=feature_names)
+
+            if "tree" in str(type(fitted_model)).lower():
+                explainer = shap.TreeExplainer(fitted_model)
+                shap_vals = explainer.shap_values(X_df)
+            else:
+                explainer = shap.LinearExplainer(fitted_model, X_df)
+                shap_vals = explainer.shap_values(X_df)
+
+            unique_classes = np.unique(y_train)
+            class_idx = 2 if 2 in unique_classes else 1  # keep same behavior/output
+
+            if isinstance(shap_vals, list):
+                shap_class_vals = shap_vals[class_idx]
+            elif getattr(shap_vals, "ndim", 2) == 3:
+                shap_class_vals = shap_vals[:, :, class_idx]
+            else:
+                shap_class_vals = shap_vals
+
+            print(f"SHAP shape: {shap_class_vals.shape} | Features: {X_df.shape}")
+
+            shap.summary_plot(
+                shap_class_vals, features=X_df, feature_names=feature_names, show=False
+            )
+            plt.title(f"SHAP Summary - {name}")
+            plt.tight_layout()
+            shap_path = FIG_DIR / f"shap_summary_{name.replace(' ', '_').lower()}.png"
+            plt.savefig(shap_path, dpi=300)
+            plt.close()
+            print(f"SHAP summary plot saved to: {shap_path}")
+
+            if ENABLE_SHAP_FEATURE_PRUNE:
+                try:
+                    mean_abs = np.mean(np.abs(shap_class_vals), axis=0)
+                    shap_importance = pd.Series(mean_abs, index=feature_names).sort_values(ascending=False)
+
+                    keep_by_thresh = shap_importance[shap_importance > SHAP_PRUNE_THRESHOLD].index.tolist()
+                    keep_features = (shap_importance.index.tolist()[:SHAP_PRUNE_MIN_FEATURES]
+                                     if len(keep_by_thresh) < SHAP_PRUNE_MIN_FEATURES else keep_by_thresh)
+
+                    imp_path = FIG_DIR / f"shap_importance_{name.replace(' ', '_').lower()}.csv"
+                    shap_importance.to_csv(imp_path, header=["mean_abs_shap"])
+                    print(f"[SHAP] Saved importance CSV to: {imp_path}")
+                    print(f"[SHAP] Keeping {len(keep_features)} features (threshold={SHAP_PRUNE_THRESHOLD}, floor={SHAP_PRUNE_MIN_FEATURES})")
+
+                    # Reduced model
+                    from sklearn.base import clone as _clone
+                    reduced_model = _clone(model)
+
+                    reduced_pipe = Pipeline([
+                        ("prep", PandasPreprocessor()),
+                        ("select", ColumnSelector(keep_features)),
+                        ("imputer", SimpleImputer(strategy="median")),
+                        ("clf", reduced_model)
+                    ])
+
+                    cv_reduced = cross_validate(reduced_pipe, X_train, y_train, cv=cv, scoring=scoring, return_train_score=False)
+                    print(f"[Reduced] CV f1_weighted: {cv_reduced['test_f1_weighted'].mean():.3f} ± {cv_reduced['test_f1_weighted'].std():.3f}")
+                    print(f"[Reduced] CV balanced_acc: {cv_reduced['test_balanced_accuracy'].mean():.3f} ± {cv_reduced['test_balanced_accuracy'].std():.3f}")
+                    print(f"[Reduced] CV precision_weighted: {cv_reduced['test_precision_weighted'].mean():.3f} ± {cv_reduced['test_precision_weighted'].std():.3f}")
+                    print(f"[Reduced] CV recall_weighted: {cv_reduced['test_recall_weighted'].mean():.3f} ± {cv_reduced['test_recall_weighted'].std():.3f}")
+                    mean_logloss = -cv_reduced['test_neg_log_loss'].mean()
+                    std_logloss  =  cv_reduced['test_neg_log_loss'].std()
+                    print(f"[Reduced] CV log_loss: {mean_logloss:.3f} ± {std_logloss:.3f}")
+
+                    reduced_pipe.fit(X_train, y_train)
+                    y_pred_red = reduced_pipe.predict(X_test)
+
+                    y_proba_red = reduced_pipe.predict_proba(X_test)
+                    classes_red = reduced_pipe.named_steps["clf"].classes_
+                    proba_cols_red = [f"proba_{int(c)}" for c in classes_red]
+
+                    proba_df_red = pd.DataFrame(y_proba_red, columns=proba_cols_red)
+                    proba_df_red["y_true"] = np.array(y_test)
+                    proba_df_red["y_pred"] = y_pred_red
+                    proba_df_red["y_pred_confidence"] = y_proba_red.max(axis=1)
+
+                    proba_csv_red = FIG_DIR / f"test_pred_proba_reduced_{name.replace(' ', '_').lower()}.csv"
+                    proba_df_red.to_csv(proba_csv_red, index=False)
+                    print(f"[Proba][Reduced] Saved per-sample probabilities to: {proba_csv_red}")
+
+                    calib_path_red = FIG_DIR / f"calibration_curve_reduced_{name.replace(' ', '_').lower()}.png"
+                    save_calibration_curve(
+                        proba_df_red["y_true"], proba_df_red["y_pred"], proba_df_red["y_pred_confidence"],
+                        f"Calibration Curve – {name} (Reduced)", calib_path_red
+                    )
+                    print(f"[Proba][Reduced] Saved calibration curve to: {calib_path_red}")
+                    print(f"[Proba] Saved calibration curve to: {calib_path}")  # keep original duplicate print
+
+                    print("\n[Reduced] Test Metrics:")
+                    print("\nTest Metrics:")
+                    print(f"Test f1_weighted        : {f1_score(y_test,  y_pred_red, average='weighted'): .3f}")
+                    print(f"Test balanced_accuracy    : {balanced_accuracy_score(y_test,  y_pred_red):.3f}")
+                    print(f"Test precision_weighted    : {precision_score(y_test,  y_pred_red, average='weighted'):.3f}")
+                    print(f"Test recall_weighted    : {recall_score(y_test,  y_pred_red, average='weighted'):.3f}")
+                    print(classification_report(y_test, y_pred_red))
+
+                    test_logloss_red = log_loss(y_test, y_proba_red)
+                    print(f"Test log loss (reduced) : {test_logloss_red:.3f}")
+
+                except Exception as _e:
+                    print(f"[SHAP] Pruning step failed for {name}: {_e}")
+
+        except Exception as e:
+            print(f"[SHAP] Skipped SHAP summary for {name} due to error:\n{e}")
+
+if __name__ == "__main__":
+    main()
