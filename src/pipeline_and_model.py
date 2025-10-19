@@ -257,7 +257,9 @@ def main():
         print(f"CV balanced_accuracy: {cv_results['test_balanced_accuracy'].mean():.3f} ± {cv_results['test_balanced_accuracy'].std():.3f}")
         print(f"CV precision_weighted: {cv_results['test_precision_weighted'].mean():.3f} ± {cv_results['test_precision_weighted'].std():.3f}")
         print(f"CV recall_weighted: {cv_results['test_recall_weighted'].mean():.3f} ± {cv_results['test_recall_weighted'].std():.3f}")
-        print(f"CV log_loss: {-cv_results['test_neg_log_loss'].mean():.3f} ± {-cv_results['test_neg_log_loss'].std():.3f}")
+        mean_logloss = -cv_results['test_neg_log_loss'].mean()
+        std_logloss  =  cv_results['test_neg_log_loss'].std()
+        print(f"CV log_loss: {mean_logloss:.3f} ± {std_logloss:.3f}")
 
         # Train and evaluate on test set
         pipe.fit(X_train, y_train)
