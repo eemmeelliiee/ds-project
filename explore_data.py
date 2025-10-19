@@ -1,3 +1,4 @@
+# explore_data.py
 from pathlib import Path
 import sys
 import pandas as pd
@@ -7,6 +8,7 @@ import matplotlib.patches as mpatches
 
 FIG_DIR = Path("figures")
 EXP_DIR = FIG_DIR / "data-exploration"
+CLEANED_PATH = Path("data/cleaned_dataset.csv")
 
 # ===============================
 # EDA Main
@@ -18,7 +20,7 @@ def main():
             return pd.read_csv(location), True
         return pd.DataFrame(), False
 
-    df, df_exists = ReadPreviousData('data/cleaned_dataset.csv')
+    df, df_exists = ReadPreviousData(CLEANED_PATH)
 
     if not df_exists:
         sys.exit("ERROR: Not all required data found.")
