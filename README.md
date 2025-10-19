@@ -1,4 +1,14 @@
 # ds-project-2
+Access the dataset here [https://www.kaggle.com/datasets/rishabchitloor/indian-water-quality-data-2021-2023]
+
+Expected structure:
+```
+├── ds-project-2
+│   ├── data
+│   │   ├── original_dataset.csv
+```
+(Note the explected name of the .csv-file)
+
 <!--- ## Instructions:
 Fork the repo. The original dataset is included in folder ```data/``` and thus does not need to be downloaded.
 
@@ -8,13 +18,5 @@ Running the main script calls the following methods:
 3. ```ExploreData()``` from ```data_evaluation.py```, which saves 5 insightful visualizations to ```figures/data-exploration/``` folder.
 
 
-Download the dataset here:
-[https://www.kaggle.com/datasets/rishabchitloor/indian-water-quality-data-2021-2023]
 
-Expected structure:
-```
-├── ds-project-2
-│   ├── data
-│   │   ├── Indian_water_data.csv
-```
  -->
