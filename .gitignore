@@ -1,9 +1,6 @@
 .DS_Store
 
-data/water_quality_cols.csv
-data/water_quality_cols_complete_rows.csv
-data/water_quality_cols_complete_rows_rel_cols.csv
-data/water_quality_cols_complete_rows_rel_cols_all_num.csv
+data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
